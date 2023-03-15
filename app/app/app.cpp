@@ -47,7 +47,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;       //дескриптор програми
-    wcex.hIcon = LoadIcon(NULL, IDI_HAND);     //визначення іконки
+    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));     //визначення іконки
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);   //визначення курсору
     wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW); //установка фону
     wcex.lpszMenuName = NULL;         //визначення меню
@@ -68,7 +68,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         szTitle,         // назва програми
         WS_OVERLAPPEDWINDOW,      // стиль вікна
         CW_USEDEFAULT,       // положення по Х  
-        CW_USEDEFAULT,      // положення по Y 1024x768 
+        CW_USEDEFAULT,      // положення по Y 
         1024,       // розмір по Х
         768,       // розмір по Y
         NULL,           // дескриптор батьківського вікна  
