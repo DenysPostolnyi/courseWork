@@ -1,180 +1,109 @@
-﻿// app.cpp : Определяет точку входа для приложения.
-//
+﻿#include <windows.h> // підключення бібліотеки з функціями API
+#include "Resource.h"
 
-#include "framework.h"
-#include "app.h"
+// Глобальні змінні:
+HINSTANCE hInst;   //Дескриптор програми  
+LPCTSTR szWindowClass = TEXT("QWERTY");
+LPCTSTR szTitle = TEXT("МЛИН");
+LPCTSTR szListText;
+HRESULT lResult;
 
-#define MAX_LOADSTRING 100
 
-// Глобальные переменные:
-HINSTANCE hInst;                                // текущий экземпляр
-WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
-WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
+// Попередній опис функцій
 
-// Отправить объявления функций, включенных в этот модуль кода:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+ATOM MyRegisterClass(HINSTANCE hInstance);
+BOOL InitInstance(HINSTANCE, int);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+// Основна програма 
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
+    int nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+    MSG msg;
 
-    // TODO: Разместите код здесь.
-
-    // Инициализация глобальных строк
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_APP, szWindowClass, MAX_LOADSTRING);
+    // Реєстрація класу вікна 
     MyRegisterClass(hInstance);
 
-    // Выполнить инициализацию приложения:
-    if (!InitInstance (hInstance, nCmdShow))
+    // Створення вікна програми
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_APP));
-
-    MSG msg;
-
-    // Цикл основного сообщения:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    // Цикл обробки повідомлень
+    while (GetMessage(&msg, NULL, 0, 0))
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
-
-    return (int) msg.wParam;
+    return msg.wParam;
 }
 
-
-
-//
-//  ФУНКЦИЯ: MyRegisterClass()
-//
-//  ЦЕЛЬ: Регистрирует класс окна.
-//
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
-
+    WNDCLASSEX wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;     //стиль вікна
+    wcex.lpfnWndProc = (WNDPROC)WndProc;     //віконна процедура
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;       //дескриптор програми
+    wcex.hIcon = LoadIcon(NULL, IDI_HAND);     //визначення іконки
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);   //визначення курсору
+    wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW); //установка фону
+    wcex.lpszMenuName = NULL;         //визначення меню
+    wcex.lpszClassName = szWindowClass;     //ім’я класу
+    wcex.hIconSm = NULL;
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_APP);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
-    return RegisterClassExW(&wcex);
+    return RegisterClassEx(&wcex);       //реєстрація класу вікна
 }
 
-//
-//   ФУНКЦИЯ: InitInstance(HINSTANCE, int)
-//
-//   ЦЕЛЬ: Сохраняет маркер экземпляра и создает главное окно
-//
-//   КОММЕНТАРИИ:
-//
-//        В этой функции маркер экземпляра сохраняется в глобальной переменной, а также
-//        создается и выводится главное окно программы.
-//
+// FUNCTION: InitInstance (HANDLE, int)
+// Створює вікно програми і зберігає дескриптор програми в змінній hInst
+
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // Сохранить маркер экземпляра в глобальной переменной
-
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   return TRUE;
+    HWND hWnd;
+    hInst = hInstance; //зберігає дескриптор додатка в змінній hInst
+    hWnd = CreateWindow(szWindowClass,   // ім’я класу вікна
+        szTitle,         // назва програми
+        WS_OVERLAPPEDWINDOW,      // стиль вікна
+        CW_USEDEFAULT,       // положення по Х  
+        CW_USEDEFAULT,      // положення по Y 1024x768 
+        1024,       // розмір по Х
+        768,       // розмір по Y
+        NULL,           // дескриптор батьківського вікна  
+        NULL,           // дескриптор меню вікна
+        hInstance,         // дескриптор програми
+        NULL);         // параметри створення.
+    if (!hWnd)   //Якщо вікно не творилось, функція повертає FALSE
+    {
+        return FALSE;
+    }
+    ShowWindow(hWnd, nCmdShow);     //Показати вікно
+    UpdateWindow(hWnd);         //Оновити вікно
+    return TRUE;
 }
 
-//
-//  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  ЦЕЛЬ: Обрабатывает сообщения в главном окне.
-//
-//  WM_COMMAND  - обработать меню приложения
-//  WM_PAINT    - Отрисовка главного окна
-//  WM_DESTROY  - отправить сообщение о выходе и вернуться
-//
-//
+// FUNCTION: WndProc (HWND, unsigned, WORD, LONG)
+// Віконна процедура. Приймає і обробляє всі повідомлення, що приходять в додаток
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+
     switch (message)
     {
+    case WM_CREATE: //Повідомлення приходить при створенні вікна
+        break;
+
     case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Разобрать выбор в меню:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
         break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
+
+    case WM_DESTROY:         //Завершення роботи
         PostQuitMessage(0);
         break;
     default:
+        //Обробка повідомлень, які не оброблені користувачем
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
-}
-
-// Обработчик сообщений для окна "О программе".
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
 }
