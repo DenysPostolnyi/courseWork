@@ -140,7 +140,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="app.ico" />
-    <Image Include="bitmap1.bmp" />
     <Image Include="icon1.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
