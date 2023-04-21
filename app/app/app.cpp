@@ -15,15 +15,17 @@ struct CONTROLS // для дочерних окон
     int state; // состояние кнопок
 };
 
-CONTROLS myControls[3];
+CONTROLS myControls[4];
 
 // Попередній опис функцій
 
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-void putElement(HWND hWnd, int x, int y, HDC hdcPaint);
+bool putElement(HWND hWnd, int x, int y, HDC hdcPaint);
 bool checkThree(int place);
+bool removeEnemysItem(HWND hWnd, int x, int y, wchar_t colorToRemove, HDC hdcPaint);
+LPCWSTR findWinner();
 
 // Основна програма 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
@@ -114,15 +116,19 @@ RECT rtBig = { x1, y1, x2, y2 };
 RECT rtMiddle = { x1 + dif, y1 + dif, x2 - dif, y2 - dif };
 RECT rtSmall = { x1 + dif * 2, y1 + dif * 2, x2 - dif * 2, y2 - dif * 2 };
 
-LPCWSTR BlackWindowName = L"Black: ";
+LPCWSTR BlackWindowName = TEXT("Black: ");
 WCHAR BlackWindowTitle[20];
 
-LPCWSTR RedWindowName = L"Red: ";
+LPCWSTR RedWindowName = TEXT("Red: ");
 WCHAR RedWindowTitle[20];
+
+LPCWSTR turn = TEXT("Turn: ");
+WCHAR turnTitle[20];
 
 static wchar_t black = 9;
 static short red = 9;
-bool whoseTern = 0; // 0 - black, 1 - red
+bool whoseTurn = 0; // 0 - black, 1 - red
+bool checkRemove = false;
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -136,12 +142,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_CREATE: //Повідомлення приходить при створенні вікна
-        for (int i = 0; i < 3; ++i) { // даем ид каждому окну
+        for (int i = 0; i < 4; ++i) { // даем ид каждому окну
             myControls[i].id = i;
         }
 
-        wsprintf(BlackWindowTitle, L"%s%d", BlackWindowName, black);
-        wsprintf(RedWindowTitle, L"%s%d", RedWindowName, red);
+        wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
+        wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
 
         myControls[1].hControl = CreateWindow(
             TEXT("static"),
@@ -158,6 +164,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             WS_CHILD | WS_VISIBLE,
             10, 30, 60, 15,
             hWnd, (HMENU)myControls[2].id,
+            hInst, NULL
+        );
+
+        myControls[3].hControl = CreateWindow(
+            TEXT("static"),
+            TEXT("Turn: ") "Black",
+            WS_CHILD | WS_VISIBLE,
+            10, 50, 80, 15,
+            hWnd, (HMENU)myControls[3].id,
             hInst, NULL
         );
 
@@ -208,22 +223,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         y = HIWORD(lParam);
         hdc = GetDC(hWnd);
 
-        if (whoseTern == 0) {
-            HBRUSH hbrushBlack = CreateSolidBrush(RGB(0, 0, 0)); // black
-            SelectObject(hdc, hbrushBlack);
-            putElement(hWnd, x, y, hdc);
-            DeleteObject(hbrushBlack);
+        if (checkRemove == true) {
+            if (removeEnemysItem(hWnd, x, y, (whoseTurn == 0) ? 'b' : 'r', hdc)) {
+                checkRemove = false;
+                if (red != 0 || black != 0) {
+                    MessageBox(hWnd, TEXT("Continue game"), TEXT("Message"), NULL);
+                    wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? TEXT("Red") : TEXT("Black"));
+                    lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
+                }
+            }
         }
-        else if (whoseTern == 1) {
-            HBRUSH hbrushRed = CreateSolidBrush(RGB(255, 0, 0)); // Светло-красный
-            SelectObject(hdc, hbrushRed);
-            putElement(hWnd, x, y, hdc);
-            DeleteObject(hbrushRed);
+        else {
+            if (whoseTurn == 0) {
+                HBRUSH hbrushBlack = CreateSolidBrush(RGB(0, 0, 0)); // black
+                SelectObject(hdc, hbrushBlack);
+                if (putElement(hWnd, x, y, hdc)) {
+                    MessageBox(hWnd, TEXT("Choose red chip to remove"), TEXT("Message to black"), NULL);
+                    checkRemove = true;
+                }
 
+                DeleteObject(hbrushBlack);
+            }
+            else if (whoseTurn == 1) {
+                HBRUSH hbrushRed = CreateSolidBrush(RGB(255, 0, 0)); // Светло-красный
+                SelectObject(hdc, hbrushRed);
+                if (putElement(hWnd, x, y, hdc)) {
+                    MessageBox(hWnd, TEXT("Choose black chip to remove"), TEXT("Message to red"), NULL);
+                    checkRemove = true;
+                }
+
+                DeleteObject(hbrushRed);
+
+            } 
         }
-        if (red == 0 && black == 0) {
-             MessageBox(hWnd, L"Finish", L"Finish", NULL);
-        }        
+
+        if (red == 0 && black == 0 && checkRemove == false) {
+            LPCWSTR message = findWinner();
+            MessageBox(hWnd, message, TEXT("Finish"), NULL);
+            break;
+        }
 
         ReleaseDC(hWnd, hdc);
         break;
@@ -264,35 +302,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-void putElement(HWND hWnd, int x, int y, HDC hdcPaint) {
+bool putElement(HWND hWnd, int x, int y, HDC hdcPaint) {
     for (int i = 0; i < fieldSize; i++) {
         if ((x >= field[i].coord.left && x <= field[i].coord.right) && (y <= field[i].coord.bottom && y >= field[i].coord.top)) {
             if (field[i].colorEl == NULL) {
                 Ellipse(hdcPaint, field[i].coord.left, field[i].coord.top, field[i].coord.right, field[i].coord.bottom);
-                if (whoseTern == 0) {
+                if (whoseTurn == 0) {
                     field[i].colorEl = 'b';
-                    if (checkThree(i)) {
-                        MessageBox(hWnd, L"", L"Black won", 0);
-                    }
-                    whoseTern = 1;
                     black--;
-                    wsprintf(BlackWindowTitle, L"%s%d", BlackWindowName, black);
+                    wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
                     lResult = SendMessageW(myControls[1].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)BlackWindowTitle);
-                }
-                else if (whoseTern == 1) {
-                    field[i].colorEl = 'r';
+                    whoseTurn = 1;
                     if (checkThree(i)) {
-                        MessageBox(hWnd, L"", L"Red won", 0);
+                        return true;
                     }
-                    whoseTern = 0;
+                    wsprintf(turnTitle, TEXT("%s%s"), turn, TEXT("Red"));
+                    lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
+                    return false;
+                }
+                else if (whoseTurn == 1) {
+                    field[i].colorEl = 'r';
                     red--;
-                    wsprintf(RedWindowTitle, L"%s%d", RedWindowName, red);
+                    wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
                     lResult = SendMessageW(myControls[2].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)RedWindowTitle);
+                    whoseTurn = 0;
+                    if (checkThree(i)) {
+                        return true;
+                    }
+                    wsprintf(turnTitle, TEXT("%s%s"), turn, TEXT("Black"));
+                    lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
+                    return false;
                 }
             }
             break;
         }
     }
+    return false;
 }
 
 bool checkThree(int place)
@@ -395,8 +440,45 @@ bool checkThree(int place)
             }
         }
     }
- 
-    
-
     return false;
+}
+
+bool removeEnemysItem(HWND hWnd, int x, int y, wchar_t colorToRemove, HDC hdcPaint)
+{
+    for (int i = 0; i < fieldSize; i++) {
+        if ((x >= field[i].coord.left && x <= field[i].coord.right) && (y <= field[i].coord.bottom && y >= field[i].coord.top)) {
+            if (field[i].colorEl == colorToRemove) {
+                Ellipse(hdcPaint, field[i].coord.left, field[i].coord.top, field[i].coord.right, field[i].coord.bottom);
+                field[i].colorEl = NULL;
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+    
+    return false;
+}
+
+LPCWSTR findWinner() {
+    int amountOfRed = 0;
+    int amountOfBlack = 0;
+    for (int i = 0; i < fieldSize; i++) {
+        if (field[i].colorEl == 'b') {
+            amountOfBlack++;
+        } else if (field[i].colorEl == 'r') {
+            amountOfRed++;
+        } 
+    }
+
+    if (amountOfBlack > amountOfRed) {
+        return TEXT("Black wins");
+    }
+    else if (amountOfBlack < amountOfRed) {
+        return TEXT("Red wins");
+    }
+    else {
+        return TEXT("Nobody wins");
+    }
 }
