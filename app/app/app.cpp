@@ -24,8 +24,9 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 bool putElement(HWND hWnd, int x, int y, HDC hdcPaint);
 bool checkThree(int place);
-bool removeEnemysItem(HWND hWnd, int x, int y, wchar_t colorToRemove, HDC hdcPaint);
+bool removeEnemysItem(int x, int y, wchar_t colorToRemove, HDC hdcPaint);
 LPCWSTR findWinner();
+void resetGame(HDC hdcPaint);
 
 // Основна програма 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
@@ -63,7 +64,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));     //визначення іконки
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);   //визначення курсору
     wcex.hbrBackground = GetSysColorBrush(COLOR_WINDOW); //установка фону
-    wcex.lpszMenuName = NULL;         //визначення меню
+    wcex.lpszMenuName = MAKEINTRESOURCE(IDR_MENU1); //визначення меню
     wcex.lpszClassName = szWindowClass;     //ім’я класу
     wcex.hIconSm = NULL;
 
@@ -95,6 +96,40 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     ShowWindow(hWnd, nCmdShow);     //Показати вікно
     UpdateWindow(hWnd);         //Оновити вікно
     return TRUE;
+}
+
+INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_INITDIALOG:  //ініціалізація функціоналу керування діалоговим вікном
+        return TRUE;
+
+        //цикл обробки натискання елементів на формі діалогового вікна
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case ID_CLOSEGAME:
+        {
+            PostQuitMessage(0);//знищення модального діалогового вікна
+            return TRUE;
+        }
+        case IDC_GAME:
+        {
+            EndDialog(hwnd, 0);//знищення модального діалогового вікна
+            return FALSE;
+        }
+        case IDC_ABOUT:
+        {
+            MessageBox(hwnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
+            return FALSE;
+        }
+        }
+    case WM_CLOSE:
+        PostQuitMessage(0);
+        return TRUE;
+    }
+    return FALSE;
 }
 
 // FUNCTION: WndProc (HWND, unsigned, WORD, LONG)
@@ -215,7 +250,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             difer -= 80;
         }
-
         break;
 
     case WM_LBUTTONDOWN: // устанавливает где нажата мышь
@@ -224,7 +258,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         hdc = GetDC(hWnd);
 
         if (checkRemove == true) {
-            if (removeEnemysItem(hWnd, x, y, (whoseTurn == 0) ? 'b' : 'r', hdc)) {
+            if (removeEnemysItem(x, y, (whoseTurn == 0) ? 'b' : 'r', hdc)) {
                 checkRemove = false;
                 if (red != 0 || black != 0) {
                     MessageBox(hWnd, TEXT("Continue game"), TEXT("Message"), NULL);
@@ -260,10 +294,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (red == 0 && black == 0 && checkRemove == false) {
             LPCWSTR message = findWinner();
             MessageBox(hWnd, message, TEXT("Finish"), NULL);
+            hdc = GetDC(hWnd);
+            resetGame(hdc);
+            DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
             break;
         }
 
         ReleaseDC(hWnd, hdc);
+        break;
+
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case IDABOUT_GAME:
+            MessageBox(hWnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
+            break;
+        }
         break;
 
     case WM_PAINT:  // Перемалювати вікно
@@ -290,6 +336,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         EndPaint(hWnd, &ps);
+
+        DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
         return 0;
 
     case WM_DESTROY:         //Завершення роботи
@@ -443,7 +491,7 @@ bool checkThree(int place)
     return false;
 }
 
-bool removeEnemysItem(HWND hWnd, int x, int y, wchar_t colorToRemove, HDC hdcPaint)
+bool removeEnemysItem(int x, int y, wchar_t colorToRemove, HDC hdcPaint)
 {
     for (int i = 0; i < fieldSize; i++) {
         if ((x >= field[i].coord.left && x <= field[i].coord.right) && (y <= field[i].coord.bottom && y >= field[i].coord.top)) {
@@ -481,4 +529,22 @@ LPCWSTR findWinner() {
     else {
         return TEXT("Nobody wins");
     }
+}
+
+
+void resetGame(HDC hdcPaint) {
+    black = 9;
+    red = 9;
+    whoseTurn = 0; 
+    checkRemove = false;
+    for (int i = 0; i < fieldSize; i++) {
+        Ellipse(hdcPaint, field[i].coord.left, field[i].coord.top, field[i].coord.right, field[i].coord.bottom);
+        field[i].colorEl = NULL;
+    }
+    wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
+    lResult = SendMessageW(myControls[1].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)BlackWindowTitle);
+    wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
+    lResult = SendMessageW(myControls[2].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)RedWindowTitle);
+    wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? TEXT("Red") : TEXT("Black"));
+    lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
 }
