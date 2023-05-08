@@ -98,6 +98,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     return TRUE;
 }
 
+
+
 INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -134,7 +136,6 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 // FUNCTION: WndProc (HWND, unsigned, WORD, LONG)
 // Віконна процедура. Приймає і обробляє всі повідомлення, що приходять в додаток
-
 struct PLACE {
     wchar_t colorEl = NULL;
     RECT coord;
@@ -165,7 +166,6 @@ static short red = 9;
 bool whoseTurn = 0; // 0 - black, 1 - red
 bool checkRemove = false;
 
-
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     PAINTSTRUCT ps;
@@ -183,33 +183,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
         wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
-
-        myControls[1].hControl = CreateWindow(
-            TEXT("static"),
-            BlackWindowTitle,
-            WS_CHILD | WS_VISIBLE,
-            10, 10, 60, 15,
-            hWnd, (HMENU)myControls[1].id,
-            hInst, NULL
-        );
-
-        myControls[2].hControl = CreateWindow(
-            TEXT("static"),
-            RedWindowTitle,
-            WS_CHILD | WS_VISIBLE,
-            10, 30, 60, 15,
-            hWnd, (HMENU)myControls[2].id,
-            hInst, NULL
-        );
-
-        myControls[3].hControl = CreateWindow(
-            TEXT("static"),
-            TEXT("Turn: ") "Black",
-            WS_CHILD | WS_VISIBLE,
-            10, 50, 80, 15,
-            hWnd, (HMENU)myControls[3].id,
-            hInst, NULL
-        );
 
         // first
         for (int i = 0; i < 3; i++) {
@@ -250,6 +223,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             difer -= 80;
         }
+        DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
+
+        myControls[1].hControl = CreateWindow(
+            TEXT("static"),
+            BlackWindowTitle,
+            WS_CHILD | WS_VISIBLE,
+            10, 10, 60, 15,
+            hWnd, (HMENU)myControls[1].id,
+            hInst, NULL
+        );
+
+        myControls[2].hControl = CreateWindow(
+            TEXT("static"),
+            RedWindowTitle,
+            WS_CHILD | WS_VISIBLE,
+            10, 30, 60, 15,
+            hWnd, (HMENU)myControls[2].id,
+            hInst, NULL
+        );
+
+        myControls[3].hControl = CreateWindow(
+            TEXT("static"),
+            TEXT("Turn: ") "Black",
+            WS_CHILD | WS_VISIBLE,
+            10, 50, 80, 15,
+            hWnd, (HMENU)myControls[3].id,
+            hInst, NULL
+        );
         break;
 
     case WM_LBUTTONDOWN: // устанавливает где нажата мышь
@@ -297,6 +298,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             hdc = GetDC(hWnd);
             resetGame(hdc);
             DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
+
+            for (int i = 0; i < 4; ++i) { // даем ид каждому окну
+                ShowWindow(myControls[i].hControl, SW_SHOW);
+            }
+
             break;
         }
 
@@ -336,8 +342,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         EndPaint(hWnd, &ps);
-
-        DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
         return 0;
 
     case WM_DESTROY:         //Завершення роботи
@@ -547,4 +551,7 @@ void resetGame(HDC hdcPaint) {
     lResult = SendMessageW(myControls[2].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)RedWindowTitle);
     wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? TEXT("Red") : TEXT("Black"));
     lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
+    for (int i = 0; i < 4; ++i) { 
+        ShowWindow(myControls[i].hControl, SW_HIDE);
+    }
 }
