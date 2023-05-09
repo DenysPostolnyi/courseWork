@@ -1,6 +1,7 @@
 ﻿#include <windows.h> // підключення бібліотеки з функціями API
 #include "Resource.h"
 
+
 // Глобальні змінні:
 HINSTANCE hInst;   //Дескриптор програми  
 LPCTSTR szWindowClass = TEXT("QWERTY");
@@ -15,7 +16,7 @@ struct CONTROLS // для дочерних окон
     int state; // состояние кнопок
 };
 
-CONTROLS myControls[4];
+CONTROLS myControls[6];
 
 // Попередній опис функцій
 
@@ -98,6 +99,75 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     return TRUE;
 }
 
+TCHAR player1Black[100];
+TCHAR player2Red[100];
+
+INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    HWND hEdit;
+    HWND hEdit2;
+    switch (message)
+    {
+    case WM_INITDIALOG:  //ініціалізація функціоналу керування діалоговим вікном
+        // Create an Edit control
+        hEdit = CreateWindowEx(
+            0,
+            L"edit",
+            L"",
+            WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,
+            50, 65, 200, 20,
+            hwnd, (HMENU)myControls[4].id,
+            hInst, NULL);
+        
+        hEdit2 = CreateWindowEx(
+            0,
+            L"edit",
+            L"",
+            WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,
+            50, 130, 200, 20,
+            hwnd, (HMENU)myControls[5].id,
+            hInst, NULL);
+
+        return TRUE;
+
+
+        //цикл обробки натискання елементів на формі діалогового вікна
+    case WM_COMMAND:
+        if (HIWORD(wParam) == EN_SETFOCUS)
+        {
+            // The edit control has received focus, return TRUE to indicate that we have handled the message
+            return TRUE;
+        }
+        if (HIWORD(wParam) == EN_KILLFOCUS)
+        {
+            // The edit control has received focus, return TRUE to indicate that we have handled the message
+            return TRUE;
+        }
+        switch (LOWORD(wParam))
+        {
+        case 4:
+            return TRUE;
+        case 5:
+            return TRUE;
+            
+
+        case IDOK:
+        {
+
+            // Retrieve text from the Edit control
+            GetDlgItemText(hwnd, myControls[4].id, player1Black, sizeof(player1Black) - 1);
+            GetDlgItemText(hwnd, myControls[5].id, player2Red, sizeof(player2Red) - 1);
+
+            EndDialog(hwnd, 0);//знищення модального діалогового вікна
+            return FALSE;
+        }
+        }
+    case WM_CLOSE:
+        PostQuitMessage(0);
+        return TRUE;
+    }
+    return FALSE;
+}
 
 
 INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -118,12 +188,18 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         case IDC_GAME:
         {
+            DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG2), hwnd, DlgLogin);
             EndDialog(hwnd, 0);//знищення модального діалогового вікна
             return FALSE;
         }
         case IDC_ABOUT:
         {
             MessageBox(hwnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
+            return FALSE;
+        }
+        case IDC_OWNER:
+        {
+            MessageBox(hwnd, TEXT("Студент групи КІУКІ-21-10, Постольний Денис Олексійович"), TEXT("Створив гру"), NULL);
             return FALSE;
         }
         }
@@ -152,37 +228,53 @@ RECT rtBig = { x1, y1, x2, y2 };
 RECT rtMiddle = { x1 + dif, y1 + dif, x2 - dif, y2 - dif };
 RECT rtSmall = { x1 + dif * 2, y1 + dif * 2, x2 - dif * 2, y2 - dif * 2 };
 
-LPCWSTR BlackWindowName = TEXT("Black: ");
-WCHAR BlackWindowTitle[20];
 
-LPCWSTR RedWindowName = TEXT("Red: ");
-WCHAR RedWindowTitle[20];
+LPCWSTR BlackWindowName;
+WCHAR BlackWindowTitle[250];
+
+LPCWSTR RedWindowName;
+WCHAR RedWindowTitle[250];
 
 LPCWSTR turn = TEXT("Turn: ");
 WCHAR turnTitle[20];
 
-static wchar_t black = 9;
+static short black = 9;
 static short red = 9;
 bool whoseTurn = 0; // 0 - black, 1 - red
 bool checkRemove = false;
+
+HBRUSH hBrush = CreateSolidBrush(RGB(220, 240, 94));
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     PAINTSTRUCT ps;
     HDC hdc;
+    static TCHAR buff1[100];
+    static TCHAR buff2[100];
+   
     static int x = 0;
     static int y = 0;
     static int fieldCount = 0;
     static int difer = 0;
+    static HBITMAP hBitmap;
+    RECT rcClient;
+    HDC hdcMem;
+    HBITMAP hBitmapOld;
+    BITMAP bmp = {};
+
+    int xSrc;
+    int ySrc;
+    int xDest;
+    int yDest;
+    int width;
+    int height;
+
     switch (message)
     {
     case WM_CREATE: //Повідомлення приходить при створенні вікна
-        for (int i = 0; i < 4; ++i) { // даем ид каждому окну
+        for (int i = 0; i < 6; ++i) { // даем ид каждому окну
             myControls[i].id = i;
         }
-
-        wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
-        wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
 
         // first
         for (int i = 0; i < 3; i++) {
@@ -225,11 +317,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
 
+        lstrcpy(buff1, player1Black);
+        BlackWindowName = lstrcat(buff1, TEXT(": "));
+        wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
+
+        lstrcpy(buff2, player2Red);
+        RedWindowName = lstrcat(buff2, TEXT(": "));
+        wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
+
         myControls[1].hControl = CreateWindow(
             TEXT("static"),
             BlackWindowTitle,
             WS_CHILD | WS_VISIBLE,
-            10, 10, 60, 15,
+            10, 10, 200, 15,
             hWnd, (HMENU)myControls[1].id,
             hInst, NULL
         );
@@ -238,19 +338,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             TEXT("static"),
             RedWindowTitle,
             WS_CHILD | WS_VISIBLE,
-            10, 30, 60, 15,
+            10, 30, 200, 15,
             hWnd, (HMENU)myControls[2].id,
             hInst, NULL
         );
 
         myControls[3].hControl = CreateWindow(
             TEXT("static"),
-            TEXT("Turn: ") "Black",
+            L"",
             WS_CHILD | WS_VISIBLE,
             10, 50, 80, 15,
             hWnd, (HMENU)myControls[3].id,
             hInst, NULL
         );
+        wsprintf(turnTitle, TEXT("%s%s"), turn, player1Black);
+        lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
+
+        hBitmap = (HBITMAP)LoadImage(nullptr, L"bitmap1.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        if (hBitmap == nullptr)
+        {
+            MessageBox(hWnd, L"Failed to load image", L"Error", MB_ICONERROR);
+            return -1;
+        }
         break;
 
     case WM_LBUTTONDOWN: // устанавливает где нажата мышь
@@ -263,7 +372,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 checkRemove = false;
                 if (red != 0 || black != 0) {
                     MessageBox(hWnd, TEXT("Continue game"), TEXT("Message"), NULL);
-                    wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? TEXT("Red") : TEXT("Black"));
+                    wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? player2Red : player1Black);
                     lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
                 }
             }
@@ -299,6 +408,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             resetGame(hdc);
             DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgMenu);
 
+            lstrcpy(buff1, player1Black);
+            BlackWindowName = lstrcat(buff1, TEXT(": "));
+            wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
+            lResult = SendMessageW(myControls[1].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)BlackWindowTitle);
+
+            lstrcpy(buff2, player2Red);
+            RedWindowName = lstrcat(buff2, TEXT(": "));
+            wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
+            lResult = SendMessageW(myControls[2].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)RedWindowTitle);
+
+            wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? player2Red : player1Black);
+            lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
+
             for (int i = 0; i < 4; ++i) { // даем ид каждому окну
                 ShowWindow(myControls[i].hControl, SW_SHOW);
             }
@@ -312,16 +434,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         switch (LOWORD(wParam))
         {
-        case IDABOUT_GAME:
-            MessageBox(hWnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
-            break;
+            case IDABOUT_GAME:
+                MessageBox(hWnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
+                break;
+            case ID_OWNER:
+                MessageBox(hWnd, TEXT("Студент групи КІУКІ-21-10, Постольний Денис Олексійович"), TEXT("Створив гру"), NULL);
+                break;
         }
         break;
 
     case WM_PAINT:  // Перемалювати вікно
         hdc = BeginPaint(hWnd, &ps);
 
+        RECT rcClient;
+        GetClientRect(hWnd, &rcClient);
+
+         hdcMem = CreateCompatibleDC(hdc);
+         hBitmapOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
+
+        GetObject(hBitmap, sizeof(BITMAP), &bmp);
+
+         xSrc = 0;
+         ySrc = 0;
+         xDest = 0;
+         yDest = 0;
+         width = rcClient.right - rcClient.left;
+         height = rcClient.bottom - rcClient.top;
+
+        StretchBlt(hdc, xDest, yDest, width, height, hdcMem, xSrc, ySrc, bmp.bmWidth, bmp.bmHeight, SRCCOPY);
+
+        SelectObject(hdcMem, hBitmapOld);
+        DeleteDC(hdcMem);
+
+        SelectObject(hdc, hBrush);
         Rectangle(hdc, rtBig.left, rtBig.top, rtBig.right, rtBig.bottom);
+        
         Rectangle(hdc, rtMiddle.left, rtMiddle.top, rtMiddle.right, rtMiddle.bottom);
         Rectangle(hdc, rtSmall.left, rtSmall.top, rtSmall.right, rtSmall.bottom);
 
@@ -345,6 +492,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_DESTROY:         //Завершення роботи
+        DeleteObject(hBitmap);
+        DeleteObject(hBrush);
         PostQuitMessage(0);
         break;
     default:
@@ -368,7 +517,7 @@ bool putElement(HWND hWnd, int x, int y, HDC hdcPaint) {
                     if (checkThree(i)) {
                         return true;
                     }
-                    wsprintf(turnTitle, TEXT("%s%s"), turn, TEXT("Red"));
+                    wsprintf(turnTitle, TEXT("%s%s"), turn, player2Red);
                     lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
                     return false;
                 }
@@ -381,7 +530,7 @@ bool putElement(HWND hWnd, int x, int y, HDC hdcPaint) {
                     if (checkThree(i)) {
                         return true;
                     }
-                    wsprintf(turnTitle, TEXT("%s%s"), turn, TEXT("Black"));
+                    wsprintf(turnTitle, TEXT("%s%s"), turn, player1Black);
                     lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
                     return false;
                 }
@@ -500,7 +649,9 @@ bool removeEnemysItem(int x, int y, wchar_t colorToRemove, HDC hdcPaint)
     for (int i = 0; i < fieldSize; i++) {
         if ((x >= field[i].coord.left && x <= field[i].coord.right) && (y <= field[i].coord.bottom && y >= field[i].coord.top)) {
             if (field[i].colorEl == colorToRemove) {
+                SelectObject(hdcPaint, hBrush);
                 Ellipse(hdcPaint, field[i].coord.left, field[i].coord.top, field[i].coord.right, field[i].coord.bottom);
+                
                 field[i].colorEl = NULL;
                 return true;
             }
@@ -525,10 +676,10 @@ LPCWSTR findWinner() {
     }
 
     if (amountOfBlack > amountOfRed) {
-        return TEXT("Black wins");
+        return lstrcat(player1Black, TEXT(" wins"));  
     }
     else if (amountOfBlack < amountOfRed) {
-        return TEXT("Red wins");
+        return lstrcat(player2Red, TEXT(" wins"));
     }
     else {
         return TEXT("Nobody wins");
@@ -541,16 +692,11 @@ void resetGame(HDC hdcPaint) {
     red = 9;
     whoseTurn = 0; 
     checkRemove = false;
+    SelectObject(hdcPaint, hBrush);
     for (int i = 0; i < fieldSize; i++) {
         Ellipse(hdcPaint, field[i].coord.left, field[i].coord.top, field[i].coord.right, field[i].coord.bottom);
         field[i].colorEl = NULL;
     }
-    wsprintf(BlackWindowTitle, TEXT("%s%d"), BlackWindowName, black);
-    lResult = SendMessageW(myControls[1].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)BlackWindowTitle);
-    wsprintf(RedWindowTitle, TEXT("%s%d"), RedWindowName, red);
-    lResult = SendMessageW(myControls[2].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)RedWindowTitle);
-    wsprintf(turnTitle, TEXT("%s%s"), turn, (whoseTurn == 1) ? TEXT("Red") : TEXT("Black"));
-    lResult = SendMessageW(myControls[3].hControl, (UINT)WM_SETTEXT, 0, (LPARAM)turnTitle);
     for (int i = 0; i < 4; ++i) { 
         ShowWindow(myControls[i].hControl, SW_HIDE);
     }
