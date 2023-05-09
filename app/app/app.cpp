@@ -1,6 +1,8 @@
 ﻿#include <windows.h> // підключення бібліотеки з функціями API
 #include "Resource.h"
+#include <tchar.h>
 
+#include <fstream>
 
 // Глобальні змінні:
 HINSTANCE hInst;   //Дескриптор програми  
@@ -158,8 +160,13 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             GetDlgItemText(hwnd, myControls[4].id, player1Black, sizeof(player1Black) - 1);
             GetDlgItemText(hwnd, myControls[5].id, player2Red, sizeof(player2Red) - 1);
 
-            EndDialog(hwnd, 0);//знищення модального діалогового вікна
-            return FALSE;
+            if (_tcslen(player1Black) > 0 && _tcslen(player2Red) > 0) {
+                EndDialog(hwnd, 0);//знищення модального діалогового вікна
+                return FALSE;
+            }
+            MessageBox(hwnd, TEXT("Заповніть усі поля"), TEXT("Помилка"), MB_OK);
+            return TRUE;
+            
         }
         }
     case WM_CLOSE:
@@ -221,12 +228,12 @@ const int fieldSize = 24;
 
 PLACE field[fieldSize];
 
-int x1 = 270, y1 = 100, x2 = 820, y2 = 650; // коорд большого квадрата
+int x1 = 270, yOne = 100, x2 = 820, y2 = 650; // коорд большого квадрата
 int dif = 80; // разница между квадратами
 
-RECT rtBig = { x1, y1, x2, y2 };
-RECT rtMiddle = { x1 + dif, y1 + dif, x2 - dif, y2 - dif };
-RECT rtSmall = { x1 + dif * 2, y1 + dif * 2, x2 - dif * 2, y2 - dif * 2 };
+RECT rtBig = { x1, yOne, x2, y2 };
+RECT rtMiddle = { x1 + dif, yOne + dif, x2 - dif, y2 - dif };
+RECT rtSmall = { x1 + dif * 2, yOne + dif * 2, x2 - dif * 2, y2 - dif * 2 };
 
 
 LPCWSTR BlackWindowName;
@@ -278,11 +285,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         // first
         for (int i = 0; i < 3; i++) {
-            field[fieldCount].coord = { (x1 + difer) - 15, (y1 + difer) - 15, (x1 + difer) + 15, (y1 + difer) + 15 };
+            field[fieldCount].coord = { (x1 + difer) - 15, (yOne + difer) - 15, (x1 + difer) + 15, (yOne + difer) + 15 };
             fieldCount++;
-            field[fieldCount].coord = { (x2 - difer + x1 + difer) / 2 - 15, (y1 + difer) - 15, (x2 - difer + x1 + difer) / 2 + 15, (y1 + difer) + 15 };
+            field[fieldCount].coord = { (x2 - difer + x1 + difer) / 2 - 15, (yOne + difer) - 15, (x2 - difer + x1 + difer) / 2 + 15, (yOne + difer) + 15 };
             fieldCount++;
-            field[fieldCount].coord = { (x2 - difer) - 15, (y1 + difer) - 15, (x2 - difer) + 15, (y1 + difer) + 15 };
+            field[fieldCount].coord = { (x2 - difer) - 15, (yOne + difer) - 15, (x2 - difer) + 15, (yOne + difer) + 15 };
             fieldCount++;
 
             difer += 80;
@@ -292,7 +299,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         // middle
         for (int i = 0; i < 6; i++) {
-            field[fieldCount].coord = { (x1 + difer) - 15, (y2 + y1) / 2 - 15, (x1 + difer) + 15, (y2 + y1) / 2 + 15 };
+            field[fieldCount].coord = { (x1 + difer) - 15, (y2 + yOne) / 2 - 15, (x1 + difer) + 15, (y2 + yOne) / 2 + 15 };
             fieldCount++;
             if (i == 2) {
                 difer += 230;
@@ -478,11 +485,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         MoveToEx(hdc, (x1 + x2) / 2, 490, NULL);
         LineTo(hdc, (x1 + x2) / 2, 650);
 
-        MoveToEx(hdc, x1, (y1 + y2) / 2, NULL);
-        LineTo(hdc, x1 + 160, (y1 + y2) / 2);
+        MoveToEx(hdc, x1, (yOne + y2) / 2, NULL);
+        LineTo(hdc, x1 + 160, (yOne + y2) / 2);
 
-        MoveToEx(hdc, x2, (y1 + y2) / 2, NULL);
-        LineTo(hdc, x2 - 160, (y1 + y2) / 2);
+        MoveToEx(hdc, x2, (yOne + y2) / 2, NULL);
+        LineTo(hdc, x2 - 160, (yOne + y2) / 2);
 
         for (int i = 0; i < fieldSize; i++) {
             Ellipse(hdc, field[i].coord.left, field[i].coord.top, field[i].coord.right, field[i].coord.bottom);
@@ -675,13 +682,66 @@ LPCWSTR findWinner() {
         } 
     }
 
+    bool check_file;
+    std::ofstream file;
+    file.open("../results.txt", std::ios_base::app);
+
+    if (file.is_open()) {
+        check_file = true;
+        file << "<==========>" << std::endl;
+    }
+
+    size_t bufSizeBlack = 2 * wcslen(player1Black) + 1;
+    char* bufBlack = new char[bufSizeBlack];
+    size_t convertedBlack = 0;
+    wcstombs_s(&convertedBlack, bufBlack, bufSizeBlack, player1Black, wcslen(player1Black));
+
+    size_t bufSizeRed = 2 * wcslen(player2Red) + 1;
+    char* bufRed = new char[bufSizeRed];
+    size_t convertedRed = 0;
+    wcstombs_s(&convertedRed, bufRed, bufSizeRed, player2Red, wcslen(player2Red));
+
     if (amountOfBlack > amountOfRed) {
+        if (check_file) {
+            file.write(bufBlack, _tcslen(player1Black));
+            file << " переміг ";
+            file.write(bufRed, _tcslen(player2Red));
+            file << " з різницею у " << amountOfBlack - amountOfRed << " фішек" << std::endl;
+            file << "<==========>" << std::endl;
+            file.close();
+        }
+
+        delete[] bufBlack;
+        delete[] bufRed;
         return lstrcat(player1Black, TEXT(" wins"));  
     }
     else if (amountOfBlack < amountOfRed) {
+        if (check_file) {
+            file.write(bufRed, _tcslen(player2Red));
+            file << " переміг ";
+            file.write(bufBlack, _tcslen(player1Black));
+            file << " з різницею у " << amountOfRed - amountOfBlack << " фішек" << std::endl;
+            file << "<==========>" << std::endl;
+            file.close();
+        }
+
+        delete[] bufBlack;
+        delete[] bufRed;
         return lstrcat(player2Red, TEXT(" wins"));
     }
     else {
+        if (check_file) {
+            file << "Гра між ";
+            file.write(bufBlack, _tcslen(player1Black));
+            file << " та ";
+            file.write(bufRed, _tcslen(player2Red));
+            file << " закінчилась нічиєю" << std::endl;
+            file << "<==========>" << std::endl;
+            file.close();
+        }
+
+        delete[] bufBlack;
+        delete[] bufRed;
         return TEXT("Nobody wins");
     }
 }
