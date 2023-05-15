@@ -22,7 +22,8 @@
 #define ID_CLOSEGAME                    1003
 #define IDC_BUTTON3                     1004
 #define IDC_OWNER                       1004
-#define IDC_EDIT2                       1006
+#define IDC_BUTTON4                     1007
+#define IDC_RESULTS                     1007
 #define ID_32771                        32771
 #define IDABOUT_GAME                    32772
 #define ID_32773                        32773
@@ -37,7 +38,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        136
 #define _APS_NEXT_COMMAND_VALUE         32777
-#define _APS_NEXT_CONTROL_VALUE         1007
+#define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

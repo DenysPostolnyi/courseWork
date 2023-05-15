@@ -1,8 +1,9 @@
 ﻿#include <windows.h> // підключення бібліотеки з функціями API
 #include "Resource.h"
 #include <tchar.h>
-
 #include <fstream>
+#include <string>
+
 
 // Глобальні змінні:
 HINSTANCE hInst;   //Дескриптор програми  
@@ -179,37 +180,61 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    //TCHAR szFile[260] = { 0 };
+    std::wstring file_contents;
     switch (message)
     {
     case WM_INITDIALOG:  //ініціалізація функціоналу керування діалоговим вікном
         return TRUE;
 
-        //цикл обробки натискання елементів на формі діалогового вікна
-    case WM_COMMAND:
-        switch (LOWORD(wParam))
-        {
-        case ID_CLOSEGAME:
-        {
-            PostQuitMessage(0);//знищення модального діалогового вікна
-            return TRUE;
-        }
-        case IDC_GAME:
-        {
-            DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG2), hwnd, DlgLogin);
-            EndDialog(hwnd, 0);//знищення модального діалогового вікна
-            return FALSE;
-        }
-        case IDC_ABOUT:
-        {
-            MessageBox(hwnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
-            return FALSE;
-        }
-        case IDC_OWNER:
-        {
-            MessageBox(hwnd, TEXT("Студент групи КІУКІ-21-10, Постольний Денис Олексійович"), TEXT("Створив гру"), NULL);
-            return FALSE;
-        }
-        }
+            //цикл обробки натискання елементів на формі діалогового вікна
+        case WM_COMMAND:
+            switch (LOWORD(wParam))
+            {
+            case ID_CLOSEGAME:
+            {
+                PostQuitMessage(0);//знищення модального діалогового вікна
+                return TRUE;
+            }
+            case IDC_GAME:
+            {
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG2), hwnd, DlgLogin);
+                EndDialog(hwnd, 0);//знищення модального діалогового вікна
+                return FALSE;
+            }
+            case IDC_ABOUT:
+            {
+                MessageBox(hwnd, TEXT("В якості ігрових фігур використовуються 9 чорних, 9 красних круглих фішок та спеціальне ігрове поле.\nГравці по черзі виставляють фішки на поле, намагаючись зібрати ряд з трьох фішок одного кольору.Як тільки комусь це вдалося, він забирає собі одну з фішок суперника.Таким чином, потрібно захопити максимум фішок опонента, не залишивши йому можливості збирати ряди.\nПеремагає той гравець, у якого наприкінці гри залишається більше фігур на полі."), TEXT("Правила гри"), NULL);
+                return FALSE;
+            }
+            case IDC_OWNER:
+            {
+                MessageBox(hwnd, TEXT("Студент групи КІУКІ-21-10, Постольний Денис Олексійович"), TEXT("Створив гру"), NULL);
+                return FALSE;
+            }
+            case IDC_RESULTS:
+            {
+                
+                std::ifstream file;
+                file.open("../results.txt");
+
+
+                if (file.is_open()) {
+                    std::string file_contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                    MessageBoxA(NULL, file_contents.c_str(), "Результати", MB_OK);
+
+                    file.close();
+
+                }
+                else {
+                        MessageBox(hwnd, TEXT("Failed to open file"), TEXT("Error"), MB_OK);
+                        return 1;
+                }
+
+                return FALSE;
+
+            }
+            }
     case WM_CLOSE:
         PostQuitMessage(0);
         return TRUE;
