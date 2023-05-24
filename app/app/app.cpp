@@ -112,6 +112,7 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_INITDIALOG:  //ініціалізація функціоналу керування діалоговим вікном
+    {
         // Create an Edit control
         hEdit = CreateWindowEx(
             0,
@@ -132,10 +133,11 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             hInst, NULL);
 
         return TRUE;
-
+    }
 
         //цикл обробки натискання елементів на формі діалогового вікна
     case WM_COMMAND:
+    {
         if (HIWORD(wParam) == EN_SETFOCUS)
         {
             // The edit control has received focus, return TRUE to indicate that we have handled the message
@@ -152,7 +154,7 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             return TRUE;
         case 5:
             return TRUE;
-            
+
 
         case IDOK:
         {
@@ -167,20 +169,58 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             MessageBox(hwnd, TEXT("Заповніть усі поля"), TEXT("Помилка"), MB_OK);
             return TRUE;
-            
+
         }
         }
+    }
+        
     case WM_CLOSE:
+    {
         PostQuitMessage(0);
         return TRUE;
+    }
+       
     }
     return FALSE;
 }
 
+INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+    case WM_INITDIALOG:
+    {
+        // Create a scrollable text control
+        HWND hEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", nullptr,
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL,
+            10, 10, 300, 200, hwndDlg, nullptr, nullptr, nullptr);
+
+        // Set some sample text in the text control
+        SetWindowText(hEdit, L"This is a sample message box with a scroll bar.");
+
+        // Set the focus to the text control
+        SetFocus(hEdit);
+
+        // Set the font for the text control (optional)
+        HFONT hFont = CreateFont(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial");
+        SendMessage(hEdit, WM_SETFONT, WPARAM(hFont), TRUE);
+
+        return TRUE;
+    }
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            EndDialog(hwndDlg, 0);
+            return TRUE;
+        }
+        break;
+    }
+    return FALSE;
+}
 
 INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    //TCHAR szFile[260] = { 0 };
     std::wstring file_contents;
     switch (message)
     {
@@ -188,8 +228,9 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         return TRUE;
 
             //цикл обробки натискання елементів на формі діалогового вікна
-        case WM_COMMAND:
-            switch (LOWORD(wParam))
+    case WM_COMMAND:
+    {
+        switch (LOWORD(wParam))
             {
             case ID_CLOSEGAME:
             {
@@ -221,8 +262,8 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 if (file.is_open()) {
                     std::string file_contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-                    MessageBoxA(NULL, file_contents.c_str(), "Результати", MB_OK);
-
+                    //MessageBoxA(NULL, file_contents.c_str(), "Результати", MB_OK);
+                    DialogBox(hInst, MAKEINTRESOURCE(0), nullptr, DialogProc);
                     file.close();
 
                 }
@@ -235,6 +276,8 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             }
             }
+    }
+            
     case WM_CLOSE:
         PostQuitMessage(0);
         return TRUE;
@@ -481,17 +524,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT rcClient;
         GetClientRect(hWnd, &rcClient);
 
-         hdcMem = CreateCompatibleDC(hdc);
-         hBitmapOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
+        hdcMem = CreateCompatibleDC(hdc);
+        hBitmapOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
 
         GetObject(hBitmap, sizeof(BITMAP), &bmp);
 
-         xSrc = 0;
-         ySrc = 0;
-         xDest = 0;
-         yDest = 0;
-         width = rcClient.right - rcClient.left;
-         height = rcClient.bottom - rcClient.top;
+        xSrc = 0;
+        ySrc = 0;
+        xDest = 0;
+        yDest = 0;
+        width = rcClient.right - rcClient.left;
+        height = rcClient.bottom - rcClient.top;
 
         StretchBlt(hdc, xDest, yDest, width, height, hdcMem, xSrc, ySrc, bmp.bmWidth, bmp.bmHeight, SRCCOPY);
 
