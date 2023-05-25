@@ -184,34 +184,37 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     return FALSE;
 }
 
-INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    switch (uMsg)
+    switch (message)
     {
     case WM_INITDIALOG:
     {
-        // Create a scrollable text control
-        HWND hEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", nullptr,
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL,
-            10, 10, 300, 200, hwndDlg, nullptr, nullptr, nullptr);
+        std::ifstream file("../results.txt");
+        if (file.is_open())
+        {
+            std::string line;
+            HWND hListBox = GetDlgItem(hwnd, IDC_LIST1);
 
-        // Set some sample text in the text control
-        SetWindowText(hEdit, L"This is a sample message box with a scroll bar.");
+            while (std::getline(file, line))
+            {
+                SendMessageA(hListBox, LB_ADDSTRING, 0, (LPARAM)line.c_str());
+            }
 
-        // Set the focus to the text control
-        SetFocus(hEdit);
-
-        // Set the font for the text control (optional)
-        HFONT hFont = CreateFont(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial");
-        SendMessage(hEdit, WM_SETFONT, WPARAM(hFont), TRUE);
+            file.close();
+        }
+        else
+        {
+            MessageBox(hwnd, L"Error opening the file.", L"Error", MB_OK | MB_ICONERROR);
+            EndDialog(hwnd, 0);
+        }
 
         return TRUE;
     }
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
-            EndDialog(hwndDlg, 0);
+            EndDialog(hwnd, 0);
             return TRUE;
         }
         break;
@@ -255,23 +258,8 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             case IDC_RESULTS:
             {
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG3), hwnd, DialogProc);
                 
-                std::ifstream file;
-                file.open("../results.txt");
-
-
-                if (file.is_open()) {
-                    std::string file_contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-                    //MessageBoxA(NULL, file_contents.c_str(), "Результати", MB_OK);
-                    DialogBox(hInst, MAKEINTRESOURCE(0), nullptr, DialogProc);
-                    file.close();
-
-                }
-                else {
-                        MessageBox(hwnd, TEXT("Failed to open file"), TEXT("Error"), MB_OK);
-                        return 1;
-                }
-
                 return FALSE;
 
             }
@@ -750,13 +738,23 @@ LPCWSTR findWinner() {
         } 
     }
 
+    SYSTEMTIME currentTime;
+    GetLocalTime(&currentTime);
+
+    // Создание строки с датой и временем
+    std::string dateTimeString = std::to_string(currentTime.wYear) + "-" +
+        std::to_string(currentTime.wMonth) + "-" +
+        std::to_string(currentTime.wDay) + " " +
+        std::to_string(currentTime.wHour) + ":" +
+        std::to_string(currentTime.wMinute) + ":" +
+        std::to_string(currentTime.wSecond);
+
     bool check_file;
     std::ofstream file;
     file.open("../results.txt", std::ios_base::app);
 
     if (file.is_open()) {
         check_file = true;
-        file << "<==========>" << std::endl;
     }
 
     size_t bufSizeBlack = 2 * wcslen(player1Black) + 1;
@@ -774,8 +772,7 @@ LPCWSTR findWinner() {
             file.write(bufBlack, _tcslen(player1Black));
             file << " переміг ";
             file.write(bufRed, _tcslen(player2Red));
-            file << " з різницею у " << amountOfBlack - amountOfRed << " фішек" << std::endl;
-            file << "<==========>" << std::endl;
+            file << " з різницею у " << amountOfBlack - amountOfRed << " фішек | " << dateTimeString << std::endl;
             file.close();
         }
 
@@ -788,8 +785,7 @@ LPCWSTR findWinner() {
             file.write(bufRed, _tcslen(player2Red));
             file << " переміг ";
             file.write(bufBlack, _tcslen(player1Black));
-            file << " з різницею у " << amountOfRed - amountOfBlack << " фішек" << std::endl;
-            file << "<==========>" << std::endl;
+            file << " з різницею у " << amountOfRed - amountOfBlack << " фішек | " << dateTimeString << std::endl;
             file.close();
         }
 
@@ -803,8 +799,7 @@ LPCWSTR findWinner() {
             file.write(bufBlack, _tcslen(player1Black));
             file << " та ";
             file.write(bufRed, _tcslen(player2Red));
-            file << " закінчилась нічиєю" << std::endl;
-            file << "<==========>" << std::endl;
+            file << " закінчилась нічиєю | " << dateTimeString << std::endl;
             file.close();
         }
 
