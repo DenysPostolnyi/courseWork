@@ -12,14 +12,49 @@ LPCTSTR szTitle = TEXT("МЛИН");
 LPCTSTR szListText;
 HRESULT lResult;
 
-struct CONTROLS // для дочерних окон
+struct CONTROLS 
 {
     HWND hControl;
-    int id; // индитивикатор окна
-    int state; // состояние кнопок
+    int id; 
+    int state; 
 };
 
 CONTROLS myControls[6];
+
+TCHAR player1Black[100];
+TCHAR player2Red[100];
+
+struct PLACE {
+    wchar_t colorEl = NULL;
+    RECT coord;
+};
+
+const int fieldSize = 24;
+
+PLACE field[fieldSize];
+
+int x1 = 270, yOne = 100, x2 = 820, y2 = 650; // коорд большого квадрата
+int dif = 80; // разница между квадратами
+
+RECT rtBig = { x1, yOne, x2, y2 };
+RECT rtMiddle = { x1 + dif, yOne + dif, x2 - dif, y2 - dif };
+RECT rtSmall = { x1 + dif * 2, yOne + dif * 2, x2 - dif * 2, y2 - dif * 2 };
+
+LPCWSTR BlackWindowName;
+WCHAR BlackWindowTitle[250];
+
+LPCWSTR RedWindowName;
+WCHAR RedWindowTitle[250];
+
+LPCWSTR turn = TEXT("Turn: ");
+WCHAR turnTitle[20];
+
+static short black = 9;
+static short red = 9;
+bool whoseTurn = 0; // 0 - black, 1 - red
+bool checkRemove = false;
+
+HBRUSH hBrush = CreateSolidBrush(RGB(220, 240, 94));
 
 // Попередній опис функцій
 
@@ -102,9 +137,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     return TRUE;
 }
 
-TCHAR player1Black[100];
-TCHAR player2Red[100];
-
 INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HWND hEdit;
@@ -139,37 +171,33 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
     {
         if (HIWORD(wParam) == EN_SETFOCUS)
-        {
-            // The edit control has received focus, return TRUE to indicate that we have handled the message
-            return TRUE;
+        { 
+            return TRUE; // щоб не знищувало вікно після наведення фокусу
         }
         if (HIWORD(wParam) == EN_KILLFOCUS)
         {
-            // The edit control has received focus, return TRUE to indicate that we have handled the message
-            return TRUE;
+            return TRUE; // щоб не знищувало вікно після приберання фокусу
         }
         switch (LOWORD(wParam))
         {
-        case 4:
+        case 4: // щоб не знищувало вікно після натискання на дочірні вікна
             return TRUE;
         case 5:
             return TRUE;
 
-
         case IDOK:
         {
-
-            // Retrieve text from the Edit control
+            // отримання даних з полів введення
             GetDlgItemText(hwnd, myControls[4].id, player1Black, sizeof(player1Black) - 1);
             GetDlgItemText(hwnd, myControls[5].id, player2Red, sizeof(player2Red) - 1);
 
             if (_tcslen(player1Black) > 0 && _tcslen(player2Red) > 0) {
-                EndDialog(hwnd, 0);//знищення модального діалогового вікна
+                EndDialog(hwnd, 0); //знищення модального діалогового вікна
                 return FALSE;
             }
+
             MessageBox(hwnd, TEXT("Заповніть усі поля"), TEXT("Помилка"), MB_OK);
             return TRUE;
-
         }
         }
     }
@@ -184,7 +212,7 @@ INT_PTR CALLBACK DlgLogin(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     return FALSE;
 }
 
-INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK DlgResults(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
@@ -224,26 +252,25 @@ INT_PTR CALLBACK DialogProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
 INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    std::wstring file_contents;
     switch (message)
     {
     case WM_INITDIALOG:  //ініціалізація функціоналу керування діалоговим вікном
         return TRUE;
 
-            //цикл обробки натискання елементів на формі діалогового вікна
+     //цикл обробки натискання елементів на формі діалогового вікна
     case WM_COMMAND:
     {
         switch (LOWORD(wParam))
             {
             case ID_CLOSEGAME:
             {
-                PostQuitMessage(0);//знищення модального діалогового вікна
+                PostQuitMessage(0); //знищення головного вікна
                 return TRUE;
             }
             case IDC_GAME:
             {
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG2), hwnd, DlgLogin);
-                EndDialog(hwnd, 0);//знищення модального діалогового вікна
+                EndDialog(hwnd, 0); //знищення модального діалогового вікна
                 return FALSE;
             }
             case IDC_ABOUT:
@@ -258,10 +285,8 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             case IDC_RESULTS:
             {
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG3), hwnd, DialogProc);
-                
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG3), hwnd, DlgResults);
                 return FALSE;
-
             }
             }
     }
@@ -275,38 +300,6 @@ INT_PTR CALLBACK DlgMenu(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 // FUNCTION: WndProc (HWND, unsigned, WORD, LONG)
 // Віконна процедура. Приймає і обробляє всі повідомлення, що приходять в додаток
-struct PLACE {
-    wchar_t colorEl = NULL;
-    RECT coord;
-};
-
-const int fieldSize = 24;
-
-PLACE field[fieldSize];
-
-int x1 = 270, yOne = 100, x2 = 820, y2 = 650; // коорд большого квадрата
-int dif = 80; // разница между квадратами
-
-RECT rtBig = { x1, yOne, x2, y2 };
-RECT rtMiddle = { x1 + dif, yOne + dif, x2 - dif, y2 - dif };
-RECT rtSmall = { x1 + dif * 2, yOne + dif * 2, x2 - dif * 2, y2 - dif * 2 };
-
-
-LPCWSTR BlackWindowName;
-WCHAR BlackWindowTitle[250];
-
-LPCWSTR RedWindowName;
-WCHAR RedWindowTitle[250];
-
-LPCWSTR turn = TEXT("Turn: ");
-WCHAR turnTitle[20];
-
-static short black = 9;
-static short red = 9;
-bool whoseTurn = 0; // 0 - black, 1 - red
-bool checkRemove = false;
-
-HBRUSH hBrush = CreateSolidBrush(RGB(220, 240, 94));
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -335,7 +328,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_CREATE: //Повідомлення приходить при створенні вікна
-        for (int i = 0; i < 6; ++i) { // даем ид каждому окну
+        for (int i = 0; i < 6; ++i) { // даємо ід кожному діалоговому вікну
             myControls[i].id = i;
         }
 
@@ -621,44 +614,44 @@ bool checkThree(int place)
         1, 4, 7, 9, 10, 11, 12, 13, 14, 16, 19, 22
     };
 
-    for (int i = 0; i < amountOfMidle; i++) {  // проверям относится ли место к средним элементам
+    for (int i = 0; i < amountOfMidle; i++) {  // перевіряємо чи належить місце до середніх елементів
         if (place == listOfMidle[i]) {
-            if (place < 9 || place > 14) { // если верхняя палка или нижняя
-                if (field[place].colorEl == field[place-1].colorEl && field[place].colorEl == field[place + 1].colorEl) { // проверяем соседние по бокам элементы
+            if (place < 9 || place > 14) { // якщо верхня або нижня лінія
+                if (field[place].colorEl == field[place-1].colorEl && field[place].colorEl == field[place + 1].colorEl) { // перевіряємо сусідні елементи
                     return true;
                 }
 
                 if (i == 0 || i == 9) {
-                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i + 1]].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i + 2]].colorEl) { // проверяем соседние по вертикали элементы сверху вниз
+                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i + 1]].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i + 2]].colorEl) { // перевіряємо сусідні по вертикалі елементи з верху вниз
                         return true;
                     }
                 }
 
                 if (i == 2 || i == 11) {
-                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i - 1]].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i - 2]].colorEl) { // проверяем соседние по вертикали элементы снизу вверх
+                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i - 1]].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i - 2]].colorEl) { // перевіряємо сусідні по вертикалі елементи з низу вверх
                         return true;
                     }
                 }
                 if (i == 1 || i == 10) {
-                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i - 1]].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i + 1]].colorEl) { // проверяем соседние по вертикали элементы если выбранный элемент по середине
+                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i - 1]].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i + 1]].colorEl) { // перевіряємо сусідні по вертикали елементи якщо обраний елемент посередині
                         return true;
                     }
                 }
             }
-            else { // если боковые палки
+            else { // якщо бокові лінії
                 if (i == 3 || i == 6) {
-                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i] + 1].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i] + 2].colorEl) { // проверяем соседние по горизонтали элементы слева на право 
+                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i] + 1].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i] + 2].colorEl) { // перевіряємо сусідні по горизонталі елементи з ліва на право 
                         return true;
                     }
                 }
 
                 if (i == 5 || i == 8) {
-                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i] - 1].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i] - 2].colorEl) { // проверяем соседние по горизонтали элементы справо на лево
+                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i] - 1].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i] - 2].colorEl) { // перевіряємо сусідні по горизонталі елементи з права на ліво
                         return true;
                     }
                 }
                 if (i == 4 || i == 7) {
-                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i] - 1].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i] + 1].colorEl) { // проверяем соседние по горизонтали элементы если выбранный элемент по середине
+                    if (field[listOfMidle[i]].colorEl == field[listOfMidle[i] - 1].colorEl && field[listOfMidle[i]].colorEl == field[listOfMidle[i] + 1].colorEl) { // перевіряємо сусідні по горизонталі елементи якщо обраний елемент по середині
                         return true;
                     }
                 }
@@ -666,9 +659,9 @@ bool checkThree(int place)
         }
     }
 
-    for (int top = 0, middle = 3, low = 10; top <= 4 && middle <= 5 && low >= 6; top += 2, middle += 1, low -= 2) { // проверка по вертикали слевой стороны
+    for (int top = 0, middle = 3, low = 10; top <= 4 && middle <= 5 && low >= 6; top += 2, middle += 1, low -= 2) { // перевіряємо по вертикали з лівого боку
         if (place == listOfCorn[top] || place == listOfMidle[middle] || place == listOfCorn[low]) {
-            if (field[listOfCorn[top]].colorEl == field[listOfMidle[middle]].colorEl && field[listOfCorn[top]].colorEl == field[listOfCorn[low]].colorEl) { // проверяем соседние элементы вниз
+            if (field[listOfCorn[top]].colorEl == field[listOfMidle[middle]].colorEl && field[listOfCorn[top]].colorEl == field[listOfCorn[low]].colorEl) { // перевіряємо сусідні елементи вниз
                 return true;
             }
             else {
@@ -677,9 +670,9 @@ bool checkThree(int place)
         }
     }
 
-    for (int top = 1, middle = 8, low = 11; top <= 5 && middle >= 6 && low >= 7; top += 2, middle -= 1, low -= 2) { // проверка по вертикали справой стороны
+    for (int top = 1, middle = 8, low = 11; top <= 5 && middle >= 6 && low >= 7; top += 2, middle -= 1, low -= 2) { // перевіряємо по вертикалі з правого боку
         if (place == listOfCorn[top] || place == listOfMidle[middle] || place == listOfCorn[low]) {
-            if (field[listOfCorn[top]].colorEl == field[listOfMidle[middle]].colorEl && field[listOfCorn[top]].colorEl == field[listOfCorn[low]].colorEl) { // проверяем соседние элементы вниз
+            if (field[listOfCorn[top]].colorEl == field[listOfMidle[middle]].colorEl && field[listOfCorn[top]].colorEl == field[listOfCorn[low]].colorEl) { // перевіряємо сусідні елементи вниз
                 return true;
             }
             else {
@@ -688,17 +681,17 @@ bool checkThree(int place)
         }
     }
 
-    // если поставили угловой элемент
+    // якщо поставили угловий елемент
 
     for (int i = 0; i < amountOfCorn; i++) {
         if (place == listOfCorn[i]) {
-            if (i % 2 == 0) { // если угловой элемент слева, соседние будут справа от него
-                if (field[listOfCorn[i]].colorEl == field[listOfCorn[i] + 1].colorEl && field[listOfCorn[i]].colorEl == field[listOfCorn[i] + 2].colorEl) { // проверяем соседние элементы по правую сторону
+            if (i % 2 == 0) { // якщо угловий елемент зліва, сусідні будуть зправа від нього
+                if (field[listOfCorn[i]].colorEl == field[listOfCorn[i] + 1].colorEl && field[listOfCorn[i]].colorEl == field[listOfCorn[i] + 2].colorEl) { // перевіряємо сусідні елементи з правого боку
                     return true;
                 }
             }
             else {
-                if (field[listOfCorn[i]].colorEl == field[listOfCorn[i] - 1].colorEl && field[listOfCorn[i]].colorEl == field[listOfCorn[i] - 2].colorEl) { // проверяем соседние элементы по левую сторону
+                if (field[listOfCorn[i]].colorEl == field[listOfCorn[i] - 1].colorEl && field[listOfCorn[i]].colorEl == field[listOfCorn[i] - 2].colorEl) { // перевіряємо сусідні елементи з лівого боку
                     return true;
                 }
             }
@@ -741,7 +734,7 @@ LPCWSTR findWinner() {
     SYSTEMTIME currentTime;
     GetLocalTime(&currentTime);
 
-    // Создание строки с датой и временем
+    // Створення строки с датою та часом
     std::string dateTimeString = std::to_string(currentTime.wYear) + "-" +
         std::to_string(currentTime.wMonth) + "-" +
         std::to_string(currentTime.wDay) + " " +
